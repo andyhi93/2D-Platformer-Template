@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerMovement2D : MonoBehaviour
@@ -10,6 +11,10 @@ public class PlayerMovement2D : MonoBehaviour
     [Header("地板偵測 (Ground Check)")]
     [Tooltip("請把放在玩家腳底的獨立 BoxCollider2D 拖進來 (勾選 IsTrigger)")]
     public Collider2D groundCheckCollider;
+
+    [Header("狀態廣播 (UnityEvents)")]
+    [Tooltip("只有在『成功起跳』的那一瞬間才會廣播 (適合接音效、變形、揚塵特效)")]
+    public UnityEvent OnJumpSuccess;
 
     [Tooltip("請選擇哪些圖層 (Layer) 代表地板")]
     public LayerMask groundLayer;
@@ -42,6 +47,8 @@ public class PlayerMovement2D : MonoBehaviour
         {
             // 將垂直速度覆寫為 jumpForce，保留當前的水平速度
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            //廣播跳躍成功事件
+            OnJumpSuccess.Invoke();
         }
     }
 
