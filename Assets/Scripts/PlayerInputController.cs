@@ -10,19 +10,38 @@ public class PlayerInputController : MonoBehaviour
     [Tooltip("傳遞水平與垂直輸入值 (-1 到 1)")]
     public UnityEvent<Vector2> OnMovementInput;
 
+    [Tooltip("當按下左鍵時觸發")]
+    public UnityEvent OnLeftButtonPressed;
+
     void Update()
     {
-        // 1. 處理移動輸入
+        //處理移動輸入
         float moveX = Input.GetAxisRaw("Horizontal");
         float moveY = Input.GetAxisRaw("Vertical");
 
         // 廣播當前的輸入向量
         OnMovementInput.Invoke(new Vector2(moveX, moveY));
+        //隨移動方向轉向，用於攻擊方向判定
+        if (moveX > 0)
+        {
+            // 面向右邊，Y 軸轉回 0 度
+            transform.eulerAngles = new Vector3(0, 0, 0);
+        }
+        else if (moveX < 0)
+        {
+            // 面向左邊，Y 軸轉到 180 度
+            transform.eulerAngles = new Vector3(0, 180, 0);
+        }
 
-        // 2. 處理跳躍輸入
-        if (Input.GetButtonDown("Jump"))
+        //處理跳躍輸入
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             OnJumpPressed.Invoke();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Mouse0))
+        {
+            OnLeftButtonPressed.Invoke();
         }
     }
 }
