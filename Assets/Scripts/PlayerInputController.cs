@@ -12,6 +12,10 @@ public class PlayerInputController : MonoBehaviour
 
     [Tooltip("當按下左鍵時觸發")]
     public UnityEvent OnLeftButtonPressed;
+    [Tooltip("當按下右鍵時觸發")]
+    public UnityEvent OnRightButtonPressed;
+    [Tooltip("當按下 Esc 鍵時觸發")]
+    public UnityEvent OnPausePressed;
 
     void Update()
     {
@@ -42,6 +46,15 @@ public class PlayerInputController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Mouse0))
         {
             OnLeftButtonPressed.Invoke();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Mouse1))
+        {
+            OnRightButtonPressed.Invoke();
+        }
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            OnPausePressed.Invoke();
         }
     }
 }

@@ -61,6 +61,7 @@ public class DynamicHitbox : MonoBehaviour
                 targetResource.ModifyResource(targetResourceKey, modifyAmount);
                 // 廣播打擊成功事件
                 OnHitSuccess.Invoke();
+                //Debug.Log($"[{gameObject.name}] 打到了 {other.name}");
             }
             else
             {

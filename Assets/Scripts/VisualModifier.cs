@@ -4,10 +4,10 @@ using UnityEngine;
 public class VisualModifier : MonoBehaviour
 {
     [Header("目標設定")]
-    [Tooltip("如果不填，程式會自動抓取同物件上的 SpriteRenderer")]
+    [Tooltip("如果不填，程式會自動抓取同物件或子物件上的 SpriteRenderer")]
     public SpriteRenderer targetSprite;
 
-    [Header("受擊閃爍 (Color Flash)")]
+    [Header("受擊閃紅 (Color Flash)")]
     public Color flashColor = Color.red;
     public float flashDuration = 0.15f;
 
@@ -15,16 +15,22 @@ public class VisualModifier : MonoBehaviour
     public Vector2 squashScale = new Vector2(1.3f, 0.7f); // 變扁的比例
     public float squashDuration = 0.2f;
 
+    [Header("無敵閃爍 (I-Frame Flicker)")]
+    [Tooltip("閃爍的頻率 (秒數越小閃越快)")]
+    public float flickerSpeed = 0.08f;
+
     // 內部狀態記憶（極度重要）
     private Color originalColor;
     private Vector3 originalScale;
 
     private Coroutine currentFlashCoroutine;
     private Coroutine currentSquashCoroutine;
+    private Coroutine currentFlickerCoroutine; // 新增：記錄閃爍協程
 
     void Awake()
     {
         // 自動抓取與初始化狀態
+        if (targetSprite == null) targetSprite = GetComponent<SpriteRenderer>();
         if (targetSprite == null) targetSprite = GetComponentInChildren<SpriteRenderer>();
 
         if (targetSprite != null)
@@ -41,7 +47,6 @@ public class VisualModifier : MonoBehaviour
     {
         if (targetSprite == null) return;
 
-        // 核心防護：如果有正在執行的閃爍，先停止它，並把顏色「強制重置」回原樣
         if (currentFlashCoroutine != null)
         {
             StopCoroutine(currentFlashCoroutine);
@@ -56,7 +61,6 @@ public class VisualModifier : MonoBehaviour
     /// </summary>
     public void PlaySquash()
     {
-        // 核心防護：如果有正在執行的形變，先停止它，並把大小「強制重置」回原樣
         if (currentSquashCoroutine != null)
         {
             StopCoroutine(currentSquashCoroutine);
@@ -64,6 +68,23 @@ public class VisualModifier : MonoBehaviour
         }
 
         currentSquashCoroutine = StartCoroutine(SquashRoutine());
+    }
+
+    /// <summary>
+    /// 新增！公開方法：播放無敵閃爍特效 (接在 ResourceManager 的 OnInvincibilityStarted 上)
+    /// </summary>
+    public void PlayFlicker(float duration)
+    {
+        if (targetSprite == null) return;
+
+        // 核心防護：如果有正在執行的閃爍，先停止它，並確保圖片是被打開的
+        if (currentFlickerCoroutine != null)
+        {
+            StopCoroutine(currentFlickerCoroutine);
+            targetSprite.enabled = true;
+        }
+
+        currentFlickerCoroutine = StartCoroutine(FlickerRoutine(duration));
     }
 
     // --- 以下為協程實作細節 ---
@@ -74,24 +95,20 @@ public class VisualModifier : MonoBehaviour
         yield return new WaitForSeconds(flashDuration);
         targetSprite.color = originalColor;
 
-        currentFlashCoroutine = null; // 執行完畢清空紀錄
+        currentFlashCoroutine = null;
     }
 
     private IEnumerator SquashRoutine()
     {
         float elapsed = 0f;
 
-        // 為了讓數學簡單直觀，我們用 Mathf.Sin 畫一個漂亮的半圓弧線來做形變過渡
-        // 進階解法是開放 AnimationCurve 讓學生自己拉曲線，但初期用 Sin 函數最穩
         while (elapsed < squashDuration)
         {
             elapsed += Time.deltaTime;
             float percent = elapsed / squashDuration;
 
-            // 利用 Sin(percent * PI) 產生 0 -> 1 -> 0 的平滑數值
             float curve = Mathf.Sin(percent * Mathf.PI);
 
-            // 根據曲線計算當前的 X 和 Y 縮放
             float currentX = Mathf.Lerp(originalScale.x, originalScale.x * squashScale.x, curve);
             float currentY = Mathf.Lerp(originalScale.y, originalScale.y * squashScale.y, curve);
 
@@ -99,8 +116,26 @@ public class VisualModifier : MonoBehaviour
             yield return null;
         }
 
-        // 確保最後精準回到原始大小
         transform.localScale = originalScale;
         currentSquashCoroutine = null;
+    }
+
+    //無敵閃爍協程 ---
+    private IEnumerator FlickerRoutine(float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            // 反轉圖片的顯示狀態 (開變關、關變開)
+            targetSprite.enabled = !targetSprite.enabled;
+
+            yield return new WaitForSeconds(flickerSpeed);
+            elapsed += flickerSpeed;
+        }
+
+        // 確保時間結束後，圖片一定是被打開的，不然角色會永遠隱形！
+        targetSprite.enabled = true;
+        currentFlickerCoroutine = null;
     }
 }

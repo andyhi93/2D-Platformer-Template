@@ -52,7 +52,7 @@ MonoBehaviour:
   modifyAmount: -1
   obstacleLayer:
     serializedVersion: 2
-    m_Bits: 192
+    m_Bits: 64
   destroyOnHit: 1
   destroyDelay: 0
   OnHitSuccess:
