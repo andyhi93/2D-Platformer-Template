@@ -1,82 +1,111 @@
+// ==========================================
+// 檔案名稱：PlayerInputController.cs
+// ==========================================
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+[System.Serializable]
+public class KeyBinding
+{
+    [Tooltip("幫這個按鍵設定一個名稱備註，方便辨識 (例如：跳躍、開火)")]
+    public string actionName = "New Action";
+
+    [Tooltip("請輸入按鍵的英文名稱 (不分大小寫)。例如：W, Space, Mouse0, Escape")]
+    public string keyName = "Space";
+
+    // 隱藏變數：用來儲存遊戲開始時，從字串轉換成功的實際 KeyCode
+    [HideInInspector]
+    public KeyCode parsedKey = KeyCode.None;
+
+    [Header("事件觸發器")]
+    public UnityEvent OnKeyDown;
+    public UnityEvent OnKeyHold;
+    public UnityEvent OnKeyUp;
+}
+
 public class PlayerInputController : MonoBehaviour
 {
-    [Header("廣播事件 (UnityEvents)")]
-    [Tooltip("當按下跳躍鍵時觸發")]
-    public UnityEvent OnJumpPressed;
-
-    [Tooltip("傳遞水平與垂直輸入值 (-1 到 1)")]
+    [Header("連續性輸入 (物理移動與瞄準)")]
     public UnityEvent<Vector2> OnMovementInput;
-
-    [Tooltip("當按下左鍵時觸發")]
-    public UnityEvent OnLeftButtonPressed;
-    [Tooltip("當按下右鍵時觸發")]
-    public UnityEvent OnRightButtonPressed;
-    [Tooltip("當按下 Esc 鍵時觸發")]
-    public UnityEvent OnPausePressed;
-
-    [Tooltip("傳遞滑鼠當前的世界座標 (X, Y)")]
     public UnityEvent<Vector2> OnMousePositionUpdated;
+
+    [Header("強制移動設定 (卡牌擴充)")]
+    public bool autoRunRight = false;
+
+    [Header("動態按鍵綁定區")]
+    public List<KeyBinding> customKeyBindings = new List<KeyBinding>();
 
     private Camera mainCam;
 
     void Awake()
     {
-        // 預先快取主攝影機，避免在 Update 中頻繁呼叫 Camera.main 造成效能損耗
         mainCam = Camera.main;
+
+        // --- 字串解析：將學員輸入的文字轉為 Unity 看得懂的 KeyCode ---
+        foreach (var binding in customKeyBindings)
+        {
+            // 使用 Enum.TryParse 嘗試轉換，忽略大小寫 (true)
+            if (System.Enum.TryParse(binding.keyName, true, out KeyCode result))
+            {
+                binding.parsedKey = result;
+            }
+            else
+            {
+                // 如果打錯字，在 Console 報錯並將按鍵設為 None
+                Debug.LogError($"[{gameObject.name}] 按鍵綁定錯誤：找不到名為 '{binding.keyName}' 的按鍵，請檢查拼字！");
+                binding.parsedKey = KeyCode.None;
+            }
+        }
     }
 
     void Update()
     {
-        // 處理移動輸入
+        // --- 1. 處理物理移動與轉向 ---
         float moveX = Input.GetAxisRaw("Horizontal");
         float moveY = Input.GetAxisRaw("Vertical");
 
-        // 廣播當前的輸入向量
+        if (autoRunRight) moveX = 1f;
+
         OnMovementInput.Invoke(new Vector2(moveX, moveY));
 
         Vector3 currentEuler = transform.eulerAngles;
 
-        // 隨移動方向轉向，用於攻擊方向判定
         if (moveX > 0)
         {
-            // 面向右邊，Y 軸轉回 0 度，X 軸保持不變
             transform.eulerAngles = new Vector3(currentEuler.x, 0, currentEuler.z);
         }
         else if (moveX < 0)
         {
-            // 面向左邊，Y 軸轉到 180 度，X 軸保持不變
             transform.eulerAngles = new Vector3(currentEuler.x, 180, currentEuler.z);
         }
 
-        // 處理跳躍輸入
-        if (Input.GetKeyDown(KeyCode.Space))
+        // --- 2. 處理動態按鍵陣列 ---
+        foreach (var binding in customKeyBindings)
         {
-            OnJumpPressed.Invoke();
+            // 如果按鍵解析失敗(None)，則跳過不執行
+            if (binding.parsedKey == KeyCode.None) continue;
+
+            if (Input.GetKeyDown(binding.parsedKey))
+            {
+                binding.OnKeyDown.Invoke();
+            }
+
+            if (Input.GetKey(binding.parsedKey))
+            {
+                binding.OnKeyHold.Invoke();
+            }
+
+            if (Input.GetKeyUp(binding.parsedKey))
+            {
+                binding.OnKeyUp.Invoke();
+            }
         }
 
-        if (Input.GetKeyDown(KeyCode.Mouse0))
-        {
-            OnLeftButtonPressed.Invoke();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Mouse1))
-        {
-            OnRightButtonPressed.Invoke();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            OnPausePressed.Invoke();
-        }
-
-        // 處理滑鼠世界座標
+        // --- 3. 處理滑鼠世界座標 ---
         if (mainCam != null)
         {
             Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
-            // 確保只回傳 2D 平面的 X 與 Y 值，捨棄 Z 軸深度
             OnMousePositionUpdated.Invoke(new Vector2(mouseWorldPos.x, mouseWorldPos.y));
         }
     }
