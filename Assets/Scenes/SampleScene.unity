@@ -506,6 +506,7 @@ GameObject:
   m_Component:
   - component: {fileID: 422243797}
   - component: {fileID: 422243796}
+  - component: {fileID: 422243798}
   m_Layer: 0
   m_Name: GameFlowManager
   m_TagString: Untagged
@@ -615,6 +616,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &422243798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 422243795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60f54c8870dcf1949a6a8503e8f5a7c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultDuration: 0.1
+  timeScaleDuringStop: 0
 --- !u!1 &529522321
 GameObject:
   m_ObjectHideFlags: 0
@@ -2693,6 +2708,7 @@ GameObject:
   - component: {fileID: 2003403569}
   - component: {fileID: 2003403571}
   - component: {fileID: 2003403570}
+  - component: {fileID: 2003403572}
   m_Layer: 3
   m_Name: Sprite
   m_TagString: Untagged
@@ -2788,6 +2804,23 @@ MonoBehaviour:
   squashScale: {x: 1.3, y: 0.7}
   squashDuration: 0.2
   flickerSpeed: 0.08
+--- !u!114 &2003403572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2003403568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6743cd60a724a244b9eca7d55a18e5a6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetSprite: {fileID: 0}
+  spawnInterval: 0.05
+  ghostLifetime: 0.5
+  ghostColor: {r: 1, g: 1, b: 1, a: 0.5}
+  overrideMaterial: {fileID: 0}
 --- !u!1 &2068602002
 GameObject:
   m_ObjectHideFlags: 0
@@ -2886,6 +2919,54 @@ MonoBehaviour:
         - m_Target: {fileID: 2068602007}
           m_TargetAssemblyTypeName: PlayerMovement2D, Assembly-CSharp
           m_MethodName: ExecuteJump
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+        - m_Target: {fileID: 2003403572}
+          m_TargetAssemblyTypeName: GhostTrail, Assembly-CSharp
+          m_MethodName: StartTrail
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+    OnKeyHold:
+      m_PersistentCalls:
+        m_Calls: []
+    OnKeyUp:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 2003403572}
+          m_TargetAssemblyTypeName: GhostTrail, Assembly-CSharp
+          m_MethodName: StopTrail
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
+  - actionName: "\u65AC\u64CA"
+    keyName: Mouse1
+    parsedKey: 0
+    OnKeyDown:
+      m_PersistentCalls:
+        m_Calls:
+        - m_Target: {fileID: 648805515}
+          m_TargetAssemblyTypeName: ObjectSpawner, Assembly-CSharp
+          m_MethodName: Spawn
           m_Mode: 1
           m_Arguments:
             m_ObjectArgument: {fileID: 0}
