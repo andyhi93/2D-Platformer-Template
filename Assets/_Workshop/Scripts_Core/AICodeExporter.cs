@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Text; // 處理編碼必備
@@ -8,7 +8,7 @@ public class AICodeExporter : EditorWindow
     [MenuItem("Tools/一鍵導出程式碼給 AI")]
     public static void ExportScriptsForAI()
     {
-        string scriptFolder = Path.Combine(Application.dataPath, "Scripts");
+        string scriptFolder = Application.dataPath;
 
         if (!Directory.Exists(scriptFolder))
         {
