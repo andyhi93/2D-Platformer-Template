@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Events;
 
 [RequireComponent(typeof(Rigidbody2D))]
@@ -131,6 +131,15 @@ public class PlayerMovement2D : MonoBehaviour
         // 注意：如果你有實作重力翻轉 (isGravityFlipped)，往上飛的判定方向會相反喔！
     }
     // ==========================================
+
+    /// <summary>
+    /// 強制給予一個向上的反彈力 (適合踩怪或彈簧)
+    /// </summary>
+    public void ForceBounce(float bounceMultiplier = 1f)
+    {
+        float appliedJumpForce = isGravityFlipped ? -jumpForce : jumpForce;
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce * bounceMultiplier);
+    }
 
     /// <summary>
     /// 執行垂直重力翻轉 (適合綁定在特定按鍵上)
