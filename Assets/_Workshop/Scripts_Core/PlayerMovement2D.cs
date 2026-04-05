@@ -64,6 +64,10 @@ public class PlayerMovement2D : MonoBehaviour
 
     private float inputTimer = 0f;
 
+    [Header("彈珠台模式設定")]
+    [Tooltip("被敵人撞擊時彈飛的力量")]
+    public float bounceBackForce = 20f;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -139,6 +143,31 @@ public class PlayerMovement2D : MonoBehaviour
     {
         float appliedJumpForce = isGravityFlipped ? -jumpForce : jumpForce;
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce * bounceMultiplier);
+    }
+
+    /// <summary>
+    /// 彈珠台模式核心：傳入撞擊來源的位置，將玩家向反方向彈飛
+    /// 適合綁定在 DynamicHitbox 的 OnEnterArea 或 OnHitSuccess
+    /// </summary>
+    public void ExecuteBounceBack(Transform attacker)
+    {
+        if (attacker == null) return;
+
+        // 1. 計算從攻擊者指向玩家的向量 (彈開方向)
+        Vector2 bounceDirection = (transform.position - attacker.position).normalized;
+
+        // 2. 為了讓彈開感更明顯，稍微加強 Y 軸向上的力 (防止只在地上摩擦)
+        bounceDirection += Vector2.up * 0.5f;
+        bounceDirection = bounceDirection.normalized;
+
+        // 3. 瞬間清除原本的速度（選用），增加「被擊中」的頓挫感
+        rb.linearVelocity = Vector2.zero;
+
+        // 4. 施加衝量
+        rb.AddForce(bounceDirection * bounceBackForce, ForceMode2D.Impulse);
+
+        // 5. 觸發反饋 (可以直接借用後座力的事件，或另建新事件)
+        OnRecoilTriggered.Invoke();
     }
 
     /// <summary>

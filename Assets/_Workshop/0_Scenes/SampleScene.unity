@@ -2303,6 +2303,7 @@ MonoBehaviour:
   OnGravityFlipped:
     m_PersistentCalls:
       m_Calls: []
+  bounceBackForce: 20
 --- !u!50 &5737497246941387358
 Rigidbody2D:
   serializedVersion: 5
