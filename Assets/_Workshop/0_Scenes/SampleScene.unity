@@ -2259,37 +2259,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b0ab81fd2b63ed49b417af501b1e57c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxMoveSpeed: 8
-  jumpForce: 6
-  timeToMaxSpeed: 0.5
-  accelerationCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  accelerationForce: 20
-  applyGroundFriction: 1
-  decelerationForce: 20
-  recoilForce: 15
+  basic:
+    maxMoveSpeed: 8
+    jumpForce: 6
+  advanced:
+    timeToMaxSpeed: 0.5
+    accelerationCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    accelerationForce: 20
+    applyGroundFriction: 1
+    decelerationForce: 20
+  special:
+    maxChargeTime: 1
+    maxChargeMultiplier: 2
+    lockMoveWhileCharging: 1
+    recoilForce: 15
+    bounceBackForce: 20
   groundCheckCollider: {fileID: 4888926402451604171}
   groundLayer:
     serializedVersion: 2
@@ -2303,7 +2310,6 @@ MonoBehaviour:
   OnGravityFlipped:
     m_PersistentCalls:
       m_Calls: []
-  bounceBackForce: 20
 --- !u!50 &5737497246941387358
 Rigidbody2D:
   serializedVersion: 5
