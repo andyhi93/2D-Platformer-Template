@@ -39,6 +39,8 @@ public class AdvancedFeelSettings
     // public float coyoteTime = 0.15f;
     // [Tooltip("【短按小跳】放開跳躍鍵時，向上的速度保留比例 (0~1)")]
     // public float jumpCutMultiplier = 0.5f;
+    // [Tooltip("【預先輸入】落地前幾秒內按下跳躍，落地瞬間會自動起跳 (秒)")]
+    // public float jumpBufferTime = 0.1f;
 }
 
 [System.Serializable]
@@ -88,6 +90,8 @@ public class PlayerMovement2D : MonoBehaviour
     private float currentChargeTimer = 0f;
     private bool isChargingJump = false;
 
+    // private float jumpBufferCounter = 0f;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -97,7 +101,25 @@ public class PlayerMovement2D : MonoBehaviour
 
     void Update()
     {
-        // [W2 施工區 - 郊狼時間計時器]
+        void Update()
+        {
+            // [W2 施工區 - 郊狼時間計時器]
+
+            // [W2 施工區 - Jump Buffer 落地判定與觸發]
+            // if (jumpBufferCounter > 0f)
+            // {
+            //     jumpBufferCounter -= Time.deltaTime;
+            //     bool isGrounded = groundCheckCollider != null && groundCheckCollider.IsTouchingLayers(groundLayer);
+            //     
+            //     if (isGrounded)
+            //     {
+            //         jumpBufferCounter = 0f; // 重置計時器
+            //         float appliedJumpForce = isGravityFlipped ? -basic.jumpForce : basic.jumpForce;
+            //         rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce);
+            //         OnJumpSuccess.Invoke();
+            //     }
+            // }
+        }
     }
 
     public void SetMovementInput(Vector2 input)
@@ -121,6 +143,11 @@ public class PlayerMovement2D : MonoBehaviour
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce);
             OnJumpSuccess.Invoke();
         }
+        // else
+        // {
+        //     // [W2 施工區 - Jump Buffer 記錄按鍵]
+        //     jumpBufferCounter = advanced.jumpBufferTime;
+        // }
     }
 
     public void CancelJump()
