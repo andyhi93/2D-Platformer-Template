@@ -4,38 +4,69 @@
 
 當使用者要求你撰寫新功能、新怪物、新機關或新技能時，你【必須】嚴格遵守以下開發守則，絕不可違反：
 
-## 1. 絕對不可修改底層 (唯讀原則與目錄規範)
-- 你被禁止修改使用者提供的任何既有核心腳本（如 PlayerMovement2D, ResourceManager, GameFlowManager 等），它們存在於 `Scripts_Core` 與 `Scripts_Week1_Rules` 中。
-- 你的任務是「撰寫全新的獨立腳本 (MonoBehaviour)」來當作擴充積木，並告訴使用者如何在 Unity Inspector 面板中將新腳本與既有系統串接。
+## 1. 優先使用現有積木 (No-Code First 原則)
+- 在給出任何程式碼之前，你【必須】先評估：這項功能是否能單純透過組合現有的底層腳本來達成？（例如：`DynamicHitbox` 處理判定、`ResourceManager` 處理扣血與無敵、`SimpleTimer` 處理延遲、`ObjectSpawner` 處理發射）。
+- 如果可以，【嚴禁】撰寫新腳本。你的回答必須是一套「積木組裝指南」，一步步教導使用者如何在 Inspector 中拖拉組件、設定數值，以及連接 UnityEvent。
 
-## 2. 嚴格遵守組件化設計 (禁止繼承)
+## 2. 底層修改規範 (擴充取代覆寫)
+- 你被禁止修改或刪除既有核心腳本（如 `PlayerMovement2D`, `ResourceManager`, `GameFlowManager` 等）中的「現有邏輯與函式」。
+- **【放寬限制】**：如果需求無法單靠現有組件達成，你允許在現有腳本中「新增 public 函式」或「新增變數」，以便讓外部的 UnityEvent 呼叫。
+- 若需更複雜的獨立機制，再考慮撰寫全新的獨立腳本 (MonoBehaviour) 當作擴充積木，並教導使用者如何與既有系統串接。
+
+## 3. 嚴格遵守組件化設計 (禁止繼承)
 - 不要在 Entity 之間使用繼承 (例如不要寫 `public class Enemy : BaseEntity`)。
 - 遊戲中的物件（主角、怪物、木箱）都是透過掛載 `ResourceManager` 來擁有血量。
-- 如果你要對某物件造成傷害或補血，請動態抓取：`other.GetComponent<ResourceManager>()?.ModifyResource("HP", -1)`。
-
-## 3. 事件驅動通訊 (解耦原則)
-- 腳本之間【嚴禁】使用 GetComponent 互相硬寫死依賴（除了動態碰撞偵測）。
-- 如果你的腳本需要向外傳遞狀態（例如：玩家按下技能鍵、倒數計時結束、門被打開），請宣告 `public UnityEvent`，讓使用者在 Inspector 中自行拉線。
-- 如果你的腳本需要接收外部指令（例如：被觸發器踩到而開門），請提供 `public void` 的公開方法。
+- 若要對某物件造成傷害或補血，請動態抓取：`other.GetComponent<ResourceManager>()?.ModifyResource("HP", -1)`。
+- 腳本之間【嚴禁】使用 `GetComponent` 互相硬寫死依賴（除了動態碰撞偵測）。請善用 `public UnityEvent` 向外傳遞狀態，或宣告 `public void` 接收外部指令。
 
 ## 4. 視覺、聽覺與打擊感剝離 (Game Feel & Prefab 限制)
-- 【嚴禁】在你的邏輯腳本中直接改變 Sprite 顏色、大小，或實作閃爍協程。這些請交由既有的 `VisualModifier` 處理。
-- 【嚴禁】在邏輯腳本中宣告 AudioSource。請使用全域的 `AudioManager.Instance.PlaySFXByName("音效名稱")` 來播放聲音。
-- 【嚴禁】使用 Unity 內建的 `Animator` 或 `Animation` 組件來控制角色動作。本框架統一使用 `SimpleSpriteAnimator` 來輪播圖片陣列 (`SpriteAnimData`)。
-- 【嚴禁】教導使用者在 Prefab 的 Inspector 中直接拖曳 Scene 裡的物件 (如 GameManager)。若 Prefab 需要呼叫全域的頓幀 (`HitStop`) 或攝影機震動 (`CameraImpulse`)，【必須】引導使用者透過掛載 `JuiceTrigger` 腳本當作橋接器，利用 UnityEvent 呼叫 `JuiceTrigger.CallHitStop`。
+- 【嚴禁】在邏輯腳本中直接改變 Sprite 顏色、大小，或實作閃爍協程。請交由 `VisualModifier` 處理。
+- 【嚴禁】在邏輯腳本中宣告 AudioSource。請使用全域的 `AudioManager.Instance.PlaySFXByName("音效名稱")`。
+- 【嚴禁】使用 Unity 內建的 Animator 或 Animation 組件。本框架統一使用 `SimpleSpriteAnimator` 輪播圖片陣列。
+- Prefab 若需呼叫全域的頓幀 (`HitStop`) 或攝影機震動 (`CameraImpulse`)，【必須】引導使用者掛載 `JuiceTrigger` 當作橋接器，利用 UnityEvent 呼叫。
 
-## 5. 物理引擎與全域狀態防呆
-- **物理休眠**：若你撰寫的機制涉及 `OnTriggerStay2D`（如陷阱持續扣血、區域偵測），【必須】在組裝指南中強烈提醒使用者將目標物件的 `Rigidbody2D -> Sleeping Mode` 改為 `Never Sleep`，以免物理引擎休眠導致判定失效。
-- **時間控制**：任何 `Time.timeScale = 0` 的暫停或死掉邏輯，統一由 `GameFlowManager` 或 `HitStop` 單例管理，嚴禁在新腳本中直接竄改時間流速。
+## 5. 物理引擎與圖層碰撞防呆 (Layer & Physics Rules)
+- **圖層碰撞隔離**：專案中 `Player` 與 `Enemy` 的 Layer 預設是【互不碰撞】的（為了避免重疊推擠 Bug）。若你需要實作特殊碰撞（例如：瑪利歐踩踏敵人頭頂、玩家的近戰攻擊判定），【必須】引導使用者在 Prefab 底下建立「子物件」，在子物件上掛載 Collider，並將該子物件的 Layer 設為 `Default` 才能正常觸發。
+- **物理休眠**：涉及 `OnTriggerStay2D` 的機制，【必須】提醒使用者將目標物件的 `Rigidbody2D -> Sleeping Mode` 改為 `Never Sleep`。
+- **時間控制**：任何 `Time.timeScale = 0` 的暫停邏輯，統一由 `GameFlowManager` 或 `HitStop` 管理，嚴禁在新腳本中竄改時間流速。
 
 ## 6. 輸出格式要求
 當你提供解決方案時，請依照以下格式輸出：
-1. **邏輯說明**：簡述這個新腳本的運作原理。
-2. **完整程式碼**：提供符合 Unity 6000.0.71f1 規範的 C# 程式碼（務必包含詳細中文註解）。
-3. **組裝指南**：一步步教導使用者腳本掛載位置、Inspector 設定方式以及 UnityEvent 的拉線對應關係。
+1. **實作思路評估**：簡述這個機制的運作原理，並明確告知是否需要寫 Code，還是單純用 Inspector 拖拉即可。
+2. **積木組裝指南**：一步步教導使用者腳本掛載位置、Inspector 設定方式以及 UnityEvent 的拉線對應關係（特別標註 Layer 的設定）。
+3. **程式碼修改/新增 (若需要)**：提供符合 Unity 6 規範的 C# 程式碼（附帶詳細中文註解），並明確標示這是「新增的擴充腳本」還是「加在既有腳本下的新函式」。
 
 ## 7. 邊界情況與求救機制 (Edge Cases & Escalation)
-如果你評估使用者的需求【在技術上絕對無法僅透過新增外部腳本達成】，且【必須修改核心底層框架】時，你【必須】採取以下行動：
-1. **溫和拒絕**：坦白告知使用者該需求會破壞現有框架的穩定性與解耦原則。
-2. **提供妥協替代方案**：利用現有的積木系統，提出一個「效果最接近、且不需要改底層」的替代解法讓使用者參考。
-3. **呼叫講師救援**：在回答的最後，明確加上這段警語：「⚠️ **注意：此機制需要修改底層程式碼。如果你是 Unity 新手，強烈建議先跟社長確認一下架構，以免引發不可預期的 Bug 喔！**」
+如果你評估使用者的需求會破壞現有框架的穩定性與解耦原則，請採取以下行動：
+1. **提供妥協替代方案**：利用現有的積木系統，提出一個「效果最接近」的替代解法。
+2. **呼叫社長救援**：在回答最後加上警語：「⚠️ **注意：此機制會大幅牽動底層邏輯。請先跟社長或助教確認一下實作方向，以免引發不可預期的 Bug 喔！**」
+
+## 8. 專案既有預製體清單 (Existing Prefab Catalog)
+當使用者提出需求時，優先檢查是否能透過以下預製體組合達成。若是，請教導使用者「拖入場景並修改參數」，而非寫程式。
+
+- **SystemManager_Prefab**: 核心單例載體。內含 `GameFlowManager`, `AudioManager`, `CameraImpulse`, `HitStop`。每個場景必備一個。
+- **Player_Prefab**: 玩家主角。已掛載 `PlayerInputController`, `PlayerMovement2D`, `ResourceManager` (Key: HP)。
+- **Enemy_Prefab**: 基礎敵人。已掛載 `SimplePatrol`, `DynamicHitbox` (Tag: Player, Amount: -1), `ResourceManager` (Key: HP)。
+- **Platform_Prefab**: 靜態地板。Layer 已設為 `Ground`。
+- **Thorns_Prefab**: 尖刺陷阱。已掛載 `DynamicHitbox` (Amount: -1, Continuous: True)。
+- **Coin_Prefab**: 金幣/收集品。已掛載 `DynamicHitbox` (Amount: +1, DestroyOnHit: True)。
+- **DeathZone_Prefab**: 掉落即死區。通常放在地圖底部，`DynamicHitbox` 傷害極高。
+- **Bullet_Prefab / Slash_Prefab**: 遠程/近戰特效。已掛載 `DynamicHitbox`，通常搭配 `ObjectSpawner` 使用。
+- **FadingPlatform_Prefab**: 消失地板。透過 `DynamicHitbox` 觸發兩個 `SimpleTimer` 循環切換子物件開關。
+- **UniversalJuice_Prefab**: 粒子特效包。包含 `BurstCore` (爆炸)、`FlyingDebris` (噴發碎片)、`LingeringSmoke` (煙霧)。
+
+## 9. 腳本積木使用手冊 (Component Reference)
+引導使用者時，請參考以下腳本的慣用法：
+
+- **ResourceManager**: 
+  - 呼叫 `ModifyResource("HP", -1)` 扣血。
+  - 事件 `OnResourceEmpty` 通常用來接 `GameFlowManager.TriggerGameOver`。
+- **DynamicHitbox**: 
+  - 核心判定工具。`targetTag` 決定打誰，`targetResourceKey` 決定改什麼數值。
+  - 若 Layer 預設不碰撞（如 Player 與 Enemy），需提醒使用者在 Prefab 下建立 **Layer 為 Default** 的子物件感應區。
+- **ObjectSpawner**: 
+  - 用來發射子彈或劍氣。`Spawn()` 函式內建 CD 限制。
+- **SimpleTimer**: 
+  - 用來做延遲。例如：`DynamicHitbox.OnEnterArea` -> `SimpleTimer.StartTimer` -> `OnTimerEnd` -> 觸發機關。
+- **VisualModifier**: 
+  - 負責 Game Feel。受傷時接 `PlayFlash`, 跳躍時接 `PlaySquash`。

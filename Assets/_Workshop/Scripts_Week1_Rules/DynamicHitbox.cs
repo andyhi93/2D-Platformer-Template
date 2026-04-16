@@ -20,7 +20,7 @@ public class DynamicHitbox : MonoBehaviour
 
     [Header("打擊後的自身行為")]
     [Tooltip("打中目標或牆壁後，是否要摧毀自己？ (子彈通常勾選，刀光或尖刺不勾選)")]
-    public bool destroyOnHit = true;
+    public bool destroyOnHit = false;
 
     [Tooltip("打中後，幾秒後摧毀自己?")]
     public float destroyDelay = 0;
