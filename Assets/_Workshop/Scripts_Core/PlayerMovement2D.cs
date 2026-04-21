@@ -78,6 +78,8 @@ public class PlayerMovement2D : MonoBehaviour
     public UnityEvent OnJumpSuccess;
     public UnityEvent OnRecoilTriggered;
     public UnityEvent OnGravityFlipped;
+    public UnityEvent OnTouchGround; // 🆕 碰到地板的廣播
+    public UnityEvent OnLeaveGround; // 🆕 離開地板的廣播
 
     // 內部記憶體 (隱藏不顯示，企劃勿動)
     private float originalGravityScale;
@@ -89,6 +91,7 @@ public class PlayerMovement2D : MonoBehaviour
     private float inputTimer = 0f;
     private float currentChargeTimer = 0f;
     private bool isChargingJump = false;
+    private bool wasGrounded = false; // 🆕 記錄前一幀是否在地面上
 
     // private float jumpBufferCounter = 0f;
 
@@ -101,25 +104,38 @@ public class PlayerMovement2D : MonoBehaviour
 
     void Update()
     {
-        void Update()
-        {
-            // [W2 施工區 - 郊狼時間計時器]
+        // 🆕 檢查目前是否在地面上
+        bool isGrounded = groundCheckCollider != null && groundCheckCollider.IsTouchingLayers(groundLayer);
 
-            // [W2 施工區 - Jump Buffer 落地判定與觸發]
-            // if (jumpBufferCounter > 0f)
-            // {
-            //     jumpBufferCounter -= Time.deltaTime;
-            //     bool isGrounded = groundCheckCollider != null && groundCheckCollider.IsTouchingLayers(groundLayer);
-            //     
-            //     if (isGrounded)
-            //     {
-            //         jumpBufferCounter = 0f; // 重置計時器
-            //         float appliedJumpForce = isGravityFlipped ? -basic.jumpForce : basic.jumpForce;
-            //         rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce);
-            //         OnJumpSuccess.Invoke();
-            //     }
-            // }
+        // 🆕 判斷著地狀態的改變
+        if (isGrounded && !wasGrounded)
+        {
+            OnTouchGround.Invoke(); // 剛碰到地板
         }
+        else if (!isGrounded && wasGrounded)
+        {
+            OnLeaveGround.Invoke(); // 剛離開地板
+        }
+
+        // 🆕 更新歷史狀態
+        wasGrounded = isGrounded;
+
+
+        // [W2 施工區 - 郊狼時間計時器]
+
+        // [W2 施工區 - Jump Buffer 落地判定與觸發]
+        // if (jumpBufferCounter > 0f)
+        // {
+        //     jumpBufferCounter -= Time.deltaTime;
+        //     
+        //     if (isGrounded)
+        //     {
+        //         jumpBufferCounter = 0f; // 重置計時器
+        //         float appliedJumpForce = isGravityFlipped ? -basic.jumpForce : basic.jumpForce;
+        //         rb.linearVelocity = new Vector2(rb.linearVelocity.x, appliedJumpForce);
+        //         OnJumpSuccess.Invoke();
+        //     }
+        // }
     }
 
     public void SetMovementInput(Vector2 input)
