@@ -21,11 +21,11 @@ public class JuiceTrigger : MonoBehaviour
     /// <summary>
     /// 呼叫全域的攝影機震動 (CameraImpulse)
     /// </summary>
-    public void CallCameraShake()
+    public void CallCameraShake(string name)
     {
         if (CameraImpulse.Instance != null)
         {
-            //CameraImpulse.Instance.PlayShakeProfile("震動名稱");
+            CameraImpulse.Instance.PlayShakeProfile(name);
         }
         else
         {
