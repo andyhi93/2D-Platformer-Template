@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Events;
 
@@ -17,13 +17,38 @@ public class GameFlowManager : MonoBehaviour
     //用來鎖死狀態，防止死掉後還能按暫停
     private bool isGameEnded = false;
 
+    private static Vector3? globalRespawnPoint = null;
+
     void Start()
     {
         Time.timeScale = 1f;
         isPaused = false;
         isGameEnded = false; // 初始化確保沒被鎖住
 
+        //場景一開始，檢查是否有存檔的重生點，有的話把玩家抓過去
+        if (globalRespawnPoint.HasValue)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+            {
+                player.transform.position = globalRespawnPoint.Value;
+            }
+        }
+
         OnGameStart.Invoke();
+    }
+
+    //給 RoomTrigger 呼叫的方法，用來更新重生點
+    public static void UpdateRespawnPoint(Vector3 newPoint)
+    {
+        globalRespawnPoint = newPoint;
+        Debug.Log($"[GameFlowManager] 重生點已更新至: {newPoint}");
+    }
+
+    //清除存檔的重生點 (如果玩家回到主選單或切換到全新關卡時可以用)
+    public void ClearRespawnPoint()
+    {
+        globalRespawnPoint = null;
     }
 
     //核心控制方法 (給 UnityEvent 或按鍵呼叫)
