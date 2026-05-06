@@ -8,11 +8,14 @@ public class ScoreData
     [Tooltip("記分項目名稱，例如：Kills, Coins, Keys")]
     public string scoreKey;
 
-    [Tooltip("起始數量 (通常為 0)")]
-    public int currentValue = 0;
+    [Tooltip("遊戲初始分數 (通常為 0)")]
+    public int initialValue = 0;
+
+    [Tooltip("【重要設定】是否要跨關卡保留？\n勾選(金幣)：死掉重載會回到上次過關的金額\n不勾(鑰匙)：死掉重載直接回到 initialValue")]
+    public bool isPersistent = false;
 
     [Tooltip("目標數量 (達到此數量會觸發事件，填 0 代表無上限純記分)")]
-    public int targetValue = 10;
+    public int targetValue = 0;
 
     [Tooltip("分數變動時廣播 (傳遞當前分數，用來接 ResourceDisplay 更新 UI)")]
     public UnityEvent<int> OnScoreChanged;
@@ -20,9 +23,11 @@ public class ScoreData
     [Tooltip("達到目標數量時觸發 (用來接通關、開門、生怪等)")]
     public UnityEvent OnTargetReached;
 
-    // 內部記憶體，防止達標事件被重複觸發
-    [HideInInspector]
-    public bool hasReachedTarget = false;
+    // 隱藏變數：當前實際分數
+    [HideInInspector] public int currentValue = 0;
+
+    // 隱藏變數：防止達標事件被重複觸發
+    [HideInInspector] public bool hasReachedTarget = false;
 }
 
 public class ScoreManager : MonoBehaviour
@@ -34,27 +39,48 @@ public class ScoreManager : MonoBehaviour
 
     private Dictionary<string, ScoreData> scoreDict = new Dictionary<string, ScoreData>();
 
+    // 核心魔法：全域靜態記憶體。只要遊戲沒關掉，裡面的資料就會一直活著，不怕切換場景！
+    private static Dictionary<string, int> persistentSavedScores = new Dictionary<string, int>();
+
     void Awake()
     {
         if (Instance == null) { Instance = this; }
         else { Destroy(gameObject); return; }
-        // 將 List 轉換為 Dictionary，方便後續用字串 (Key) 快速尋找
+
         foreach (var score in scoreObjectives)
         {
             if (!scoreDict.ContainsKey(score.scoreKey))
             {
+                // ==========================================
+                // 讀檔邏輯：判斷這個分數需不需要「繼承」之前的記憶
+                // ==========================================
+                if (score.isPersistent)
+                {
+                    // 如果全域記憶體裡有存過這個項目，就讀檔；沒有的話，就把初始值存進去當第一筆紀錄
+                    if (persistentSavedScores.TryGetValue(score.scoreKey, out int savedVal))
+                    {
+                        score.currentValue = savedVal;
+                    }
+                    else
+                    {
+                        score.currentValue = score.initialValue;
+                        persistentSavedScores[score.scoreKey] = score.currentValue;
+                    }
+                }
+                else
+                {
+                    // 如果不保留 (例如這關的鑰匙)，每次載入場景都乖乖回到初始值
+                    score.currentValue = score.initialValue;
+                }
+
                 scoreDict.Add(score.scoreKey, score);
-            }
-            else
-            {
-                Debug.LogWarning($"[{gameObject.name}] 發現重複的記分鍵值: {score.scoreKey}，請檢查設定！");
             }
         }
     }
 
     void Start()
     {
-        // 遊戲開始時，廣播一次初始數值，讓 UI 顯示為 0
+        // 遊戲開始時，廣播一次當前數值，讓 UI 更新畫面
         foreach (var score in scoreDict.Values)
         {
             score.OnScoreChanged.Invoke(score.currentValue);
@@ -62,52 +88,67 @@ public class ScoreManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 給 UnityEvent 呼叫的便利方法 (預設加 1 分)
-    /// 適合綁在敵人的死亡事件、金幣的拾取事件上
+    /// 加 1 分 (給 UnityEvent 呼叫)
     /// </summary>
-    public void AddOneScore(string key)
-    {
-        AddScore(key, 1);
-    }
+    public void AddOneScore(string key) { AddScore(key, 1); }
 
     /// <summary>
-    /// 核心加分邏輯 (可自訂加分數量)
+    /// 核心加分邏輯
     /// </summary>
     public void AddScore(string key, int amount)
     {
         if (scoreDict.TryGetValue(key, out ScoreData score))
         {
-            // 已經達標就不再處理邏輯 (如果希望達標後還能繼續記分，可將這行註解)
-            // if (score.hasReachedTarget) return; 
-
             score.currentValue += amount;
-
-            // 1. 廣播給 UI 更新
             score.OnScoreChanged.Invoke(score.currentValue);
 
-            // 2. 判斷是否達到目標條件 (且目標值大於 0 才算數)
             if (score.targetValue > 0 && score.currentValue >= score.targetValue && !score.hasReachedTarget)
             {
                 score.hasReachedTarget = true;
                 score.OnTargetReached.Invoke();
-                Debug.Log($"[{gameObject.name}] 目標達成: {key}!");
             }
-        }
-        else
-        {
-            Debug.LogWarning($"嘗試增加不存在的分數項目: {key}。請確認字串是否拼錯。");
         }
     }
 
+    // ==========================================
+    // 存檔與重置管理區
+    // ==========================================
+
     /// <summary>
-    /// 讓企劃/學員可以直接從外部讀取目前分數
+    /// 【過關存檔】在走到下一關的傳送門時呼叫！
+    /// 它會把目前的金幣數量寫入靜態記憶體中。
     /// </summary>
+    public void SavePersistentScores()
+    {
+        foreach (var score in scoreDict.Values)
+        {
+            if (score.isPersistent)
+            {
+                persistentSavedScores[score.scoreKey] = score.currentValue;
+            }
+        }
+        Debug.Log("[ScoreManager] 已儲存所有跨關卡分數進度！");
+    }
+
+    /// <summary>
+    /// 【徹底重置】如果玩家回到遊戲主選單，或者你希望一切從零開始時呼叫。
+    /// </summary>
+    public void ClearAllPersistentScores()
+    {
+        persistentSavedScores.Clear();
+
+        foreach (var score in scoreDict.Values)
+        {
+            score.currentValue = score.initialValue;
+            score.hasReachedTarget = false;
+            score.OnScoreChanged.Invoke(score.currentValue);
+        }
+        Debug.Log("[ScoreManager] 已徹底清空所有全域分數記憶！");
+    }
+
     public int GetScore(string key)
     {
-        if (scoreDict.TryGetValue(key, out ScoreData score))
-        {
-            return score.currentValue;
-        }
+        if (scoreDict.TryGetValue(key, out ScoreData score)) return score.currentValue;
         return 0;
     }
 }
