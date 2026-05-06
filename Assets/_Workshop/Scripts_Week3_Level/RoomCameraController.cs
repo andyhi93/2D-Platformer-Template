@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class RoomCameraController : MonoBehaviour
 {
@@ -8,99 +9,107 @@ public class RoomCameraController : MonoBehaviour
     public TransitionMode mode = TransitionMode.SmoothLerp;
     public float transitionSpeed = 8f;
 
-    [Tooltip("轉場冷卻時間(秒)：避免玩家在邊界反覆橫跳導致鏡頭鬼畜")]
-    public float transitionCooldown = 0.5f;
-
     [Header("邊界死亡設定 (學員專用)")]
-    [Tooltip("勾選後，玩家只要離開攝影機畫面範圍就會觸發 GameOver")]
     public bool killPlayerOutOfBounds = false;
-    [Tooltip("容錯範圍(0~1)，0.1代表容許玩家稍微飛出畫面邊緣10%才死")]
     public float outOfBoundsTolerance = 0.1f;
 
     public enum TransitionMode { Instant, SmoothLerp }
 
-    private Vector3 targetPosition;
     private bool isTransitioning = false;
-    private float cooldownTimer = 0f;
+    private Coroutine transitionCoroutine;
     private Transform playerTransform;
     private Camera cam;
-    private GameFlowManager gameFlowManager; // 抓取全域管理器
-
+    private GameFlowManager gameFlowManager;
     void Awake()
     {
         Instance = this;
-        targetPosition = transform.position;
         cam = GetComponent<Camera>();
     }
 
     void Start()
     {
-        // 快取玩家和 GameFlowManager，避免每幀尋找效能過低
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null) playerTransform = player.transform;
-
         gameFlowManager = FindAnyObjectByType<GameFlowManager>();
     }
 
     /// <summary>
-    /// 給 RoomTrigger 呼叫的方法：設定新的鏡頭目標點
+    /// 給 RoomTrigger 呼叫的方法：開始 Celeste 風格的過場
     /// </summary>
     public void MoveCameraTo(Vector2 newTargetXY)
     {
-        // 【防抖動核心】如果還在冷卻時間內，無視新的切換請求
         if (isTransitioning) return;
 
-        targetPosition = new Vector3(newTargetXY.x, newTargetXY.y, transform.position.z);
-
-        // 觸發冷卻時間
+        Vector3 targetPos = new Vector3(newTargetXY.x, newTargetXY.y, transform.position.z);
+        transitionCoroutine = StartCoroutine(RoomTransitionRoutine(targetPos));
+    }
+    private IEnumerator RoomTransitionRoutine(Vector3 targetPos)
+    {
         isTransitioning = true;
-        cooldownTimer = transitionCooldown;
+
+        // 1. 【暫停世界】
+        // 這樣怪就不會動，玩家也不會亂跑，也不會觸發任何受擊震動
+        Time.timeScale = 0f;
+
+        // 2. 【移動相機】
+        if (mode == TransitionMode.Instant)
+        {
+            transform.position = targetPos;
+        }
+        else if (mode == TransitionMode.SmoothLerp)
+        {
+            // 當距離目標還很遠時，持續移動
+            while (Vector3.Distance(transform.position, targetPos) > 0.01f)
+            {
+                // ⚠️ 關鍵：因為 timeScale 是 0，這裡必須用 Time.unscaledDeltaTime
+                transform.position = Vector3.Lerp(transform.position, targetPos, Time.unscaledDeltaTime * transitionSpeed);
+                yield return null; // 等待下一個 frame
+            }
+            // 確保最後精準對齊
+            transform.position = targetPos;
+        }
+
+        // 3. 【更新震動腳本的原點】(回答你的第一個問題！)
+        // 等相機確實停在新的房間中心後，告訴 CameraImpulse 這裡就是新家
+        if (CameraImpulse.Instance != null)
+        {
+            CameraImpulse.Instance.UpdateOriginalPosition(transform.position);
+        }
+
+        // 4. 【恢復世界】
+        Time.timeScale = 1f;
+        isTransitioning = false;
     }
 
     void LateUpdate()
     {
-        // 1. 處理轉場冷卻計時
-        if (isTransitioning)
-        {
-            cooldownTimer -= Time.deltaTime;
-            if (cooldownTimer <= 0)
-            {
-                isTransitioning = false; // 冷卻結束，可以再次切換房間
-            }
-        }
-
-        // 2. 執行相機移動
-        if (transform.position != targetPosition)
-        {
-            if (mode == TransitionMode.Instant)
-                transform.position = targetPosition;
-            else if (mode == TransitionMode.SmoothLerp)
-                transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * transitionSpeed);
-        }
-
-        // 3. 【安全的邊界死亡判定】
-        // 只有在「開啟功能」、「玩家存活」、且「相機沒有在轉場」時才判定！
+        // 安全的邊界死亡判定 (只有在沒有轉場時才判定)
         if (killPlayerOutOfBounds && !isTransitioning && playerTransform != null && gameFlowManager != null)
         {
-            // 將玩家的世界座標轉換為相機視角比例 (0~1 之間代表在畫面內)
             Vector3 viewportPos = cam.WorldToViewportPoint(playerTransform.position);
-
-            // 加上容錯值 (Tolerance) 進行判斷
             if (viewportPos.x < 0 - outOfBoundsTolerance || viewportPos.x > 1 + outOfBoundsTolerance ||
                 viewportPos.y < 0 - outOfBoundsTolerance || viewportPos.y > 1 + outOfBoundsTolerance)
             {
                 Debug.Log("玩家飛出畫面，觸發死亡！");
-                gameFlowManager.TriggerGameOver(); // 呼叫你原本寫好的 GameFlowManager[cite: 1]
+                gameFlowManager.TriggerGameOver();
             }
         }
     }
-
     /// <summary>
-    /// 強制解除轉場冷卻 (給傳送門專用，確保目的地房間一定能接管相機)
+    /// 強制解除轉場狀態 (給傳送門專用，中斷目前的過場並恢復時間)
     /// </summary>
     public void ResetCooldown()
     {
+        // 如果過場動畫演到一半被傳送門打斷，我們必須強制停掉它
+        if (transitionCoroutine != null)
+        {
+            StopCoroutine(transitionCoroutine);
+            transitionCoroutine = null;
+        }
+        // 重置狀態，允許下一次的鏡頭移動
         isTransitioning = false;
-        cooldownTimer = 0f;
+
+        // 不然玩家傳送完會發現整個世界永遠停住了
+        Time.timeScale = 1f;
     }
 }

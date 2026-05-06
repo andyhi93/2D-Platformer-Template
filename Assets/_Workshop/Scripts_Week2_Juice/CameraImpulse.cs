@@ -38,7 +38,10 @@ public class CameraImpulse : MonoBehaviour
 
         originalPos = transform.localPosition;
     }
-
+    public void UpdateOriginalPosition(Vector3 newPosition)
+    {
+        originalPos = newPosition;
+    }
     // ==========================================
     // 👇 給 UnityEvent 呼叫的萬用接口
     // ==========================================
